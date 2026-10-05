@@ -1,0 +1,39 @@
+services:
+  treinamento:
+    build: ./treinamento
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./data:/app/data
+
+  modelo:
+    build: ./modelo
+    volumes:
+      - ./artifacts:/app/artifacts:ro  # lê o model.pkl gerado pelo treinamento
+    ports:
+      - "8001:8000"
+    depends_on:
+      treinamento:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      retries: 5
+
+  api:
+    build: ./api
+    environment:
+      - MODELO_URL=http://modelo:8000
+    volumes:
+      - ./registros:/app/registros  # registro.csv fica visível no host
+    ports:
+      - "8000:8000"
+    depends_on:
+      modelo:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - api

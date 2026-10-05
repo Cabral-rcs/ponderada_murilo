@@ -1,0 +1,30 @@
+{
+  "n_lags": 7,
+  "features": [
+    "lag_7",
+    "lag_6",
+    "lag_5",
+    "lag_4",
+    "lag_3",
+    "lag_2",
+    "lag_1"
+  ],
+  "ticker": "BTC-USD",
+  "metrics": {
+    "mae_model_usd": 1032.23,
+    "mae_baseline_usd": 985.43,
+    "train_rows": 579,
+    "test_rows": 145
+  },
+  "trained_at": "2026-10-05T18:57:54.186767+00:00",
+  "sklearn_version": "1.5.2",
+  "last_closes": [
+    83622.43,
+    83553.85,
+    84853.1,
+    84497.21,
+    84763.58,
+    86480.3,
+    85446.61
+  ]
+}

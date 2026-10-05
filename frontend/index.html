@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Previsão BTC</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; color: #222; }
+    h1 { font-size: 1.5rem; }
+    textarea { width: 100%; height: 60px; font-family: monospace; }
+    button { padding: 8px 16px; margin: 8px 8px 0 0; cursor: pointer; }
+    .box { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    .resultado { font-size: 1.4rem; font-weight: bold; }
+    .erro { color: #b00020; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { border-bottom: 1px solid #eee; padding: 4px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Previsão do fechamento do Bitcoin (BTC-USD)</h1>
+  <p id="status">Verificando serviços...</p>
+
+  <div class="box">
+    <label for="closes">Últimos 7 fechamentos (USD), do mais antigo ao mais recente, separados por vírgula:</label>
+    <textarea id="closes"></textarea>
+    <button id="ultimos">Usar últimos fechamentos reais</button>
+    <button id="prever">Prever</button>
+    <p id="resultado"></p>
+  </div>
+
+  <h2>Histórico (registro.csv)</h2>
+  <table>
+    <thead><tr><th>id</th><th>timestamp</th><th>closes</th><th>predição</th><th>status</th></tr></thead>
+    <tbody id="historico"></tbody>
+  </table>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let ultimos = [];
+
+    async function carregarStatus() {
+      try {
+        const r = await fetch("/api/health");
+        const d = await r.json();
+        const m = d.modelo;
+        if (m.status === "ok") {
+          ultimos = m.last_closes;
+          $("status").textContent = `API ok | Modelo ok (treinado em ${m.trained_at.slice(0, 10)}, MAE ${m.metrics.mae_model_usd} USD)`;
+          if (!$("closes").value) $("closes").value = ultimos.join(", ");
+        } else {
+          $("status").textContent = "API ok | Modelo indisponível";
+        }
+      } catch {
+        $("status").textContent = "API indisponível";
+      }
+    }
+
+    async function carregarHistorico() {
+      const r = await fetch("/api/historico");
+      const linhas = await r.json();
+      $("historico").innerHTML = linhas.reverse().map(l =>
+        `<tr><td>${l.id}</td><td>${l.timestamp}</td><td>${l.closes}</td><td>${l.prediction}</td><td>${l.status}</td></tr>`
+      ).join("");
+    }
+
+    $("ultimos").onclick = () => { $("closes").value = ultimos.join(", "); };
+
+    $("prever").onclick = async () => {
+      const closes = $("closes").value.split(",").map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+      $("resultado").className = "";
+      $("resultado").textContent = "Calculando...";
+      const r = await fetch("/api/predicao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ closes }),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        $("resultado").className = "resultado";
+        $("resultado").textContent = `Previsão para o próximo dia: ${d.prediction.toLocaleString("pt-BR")} USD`;
+      } else {
+        $("resultado").className = "erro";
+        $("resultado").textContent = `Erro ${r.status}: ${JSON.stringify(d.detail)}`;
+      }
+      carregarHistorico();
+    };
+
+    carregarStatus();
+    carregarHistorico();
+  </script>
+</body>
+</html>
